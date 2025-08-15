@@ -1,0 +1,135 @@
+import java.sql.*;
+import java.util.Scanner;
+
+public class EmployeeDatabaseApp {
+    private static final String URL = "jdbc:mysql://localhost:3306/employee_db";
+    private static final String USER = "root";
+    private static final String PASSWORD = "your_password"; // Replace with your MySQL password
+
+    public static void main(String[] args) {
+        try {
+            // Register JDBC driver
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            
+            // Create database and table if not exists
+            createDatabaseAndTable();
+            
+            Scanner scanner = new Scanner(System.in);
+            while (true) {
+                System.out.println("\nEmployee Database Management System");
+                System.out.println("1. Add Employee");
+                System.out.println("2. View All Employees");
+                System.out.println("3. Update Employee");
+                System.out.println("4. Delete Employee");
+                System.out.println("5. Exit");
+                System.out.print("Enter your choice: ");
+                
+                int choice = scanner.nextInt();
+                scanner.nextLine(); // Consume newline
+                
+                switch (choice) {
+                    case 1:
+                        addEmployee(scanner);
+                        break;
+                    case 2:
+                        viewAllEmployees();
+                        break;
+                    case 3:
+                        updateEmployee(scanner);
+                        break;
+                    case 4:
+                        deleteEmployee(scanner);
+                        break;
+                    case 5:
+                        System.out.println("Exiting...");
+                        scanner.close();
+                        return;
+                    default:
+                        System.out.println("Invalid choice! Please try again.");
+                }
+            }
+        } catch (ClassNotFoundException e) {
+            System.out.println("JDBC Driver not found: " + e.getMessage());
+        } catch (SQLException e) {
+            System.out.println("Database error: " + e.getMessage());
+        }
+    }
+
+    // Create database and table
+    private static void createDatabaseAndTable() throws SQLException {
+        try (Connection conn = DriverManager.getConnection(
+                "jdbc:mysql://localhost:3306/", USER, PASSWORD);
+             Statement stmt = conn.createStatement()) {
+            
+            // Create database
+            stmt.executeUpdate("CREATE DATABASE IF NOT EXISTS employee_db");
+            
+            // Use the database
+            stmt.executeUpdate("USE employee_db");
+            
+            // Create employees table
+            String createTableSQL = "CREATE TABLE IF NOT EXISTS employees (" +
+                    "id INT PRIMARY KEY AUTO_INCREMENT," +
+                    "first_name VARCHAR(50) NOT NULL," +
+                    "last_name VARCHAR(50) NOT NULL," +
+                    "email VARCHAR(100) UNIQUE NOT NULL," +
+                    "salary DOUBLE NOT NULL)";
+            stmt.executeUpdate(createTableSQL);
+        }
+    }
+
+    // Add new employee
+    private static void addEmployee(Scanner scanner) throws SQLException {
+        System.out.print("Enter first name: ");
+        String firstName = scanner.nextLine();
+        System.out.print("Enter last name: ");
+        String lastName = scanner.nextLine();
+        System.out.print("Enter email: ");
+        String email = scanner.nextLine();
+        System.out.print("Enter salary: ");
+        double salary = scanner.nextDouble();
+        
+        String sql = "INSERT INTO employees (first_name, last_name, email, salary) VALUES (?, ?, ?, ?)";
+        try (Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, firstName);
+            pstmt.setString(2, lastName);
+            pstmt.setString(3, email);
+            pstmt.setDouble(4, salary);
+            
+            int rowsAffected = pstmt.executeUpdate();
+            System.out.println(rowsAffected + " employee(s) added successfully!");
+        }
+    }
+
+    // View all employees
+    private static void viewAllEmployees() throws SQLException {
+        String sql = "SELECT * FROM employees";
+        try (Connection conn = DriverManager.getConnection(URL, USER, PASSWORD);
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            
+            System.out.println("\nEmployee List:");
+            System.out.println("ID | First Name | Last Name | Email | Salary");
+            System.out.println("---------------------------------------------");
+            
+            while (rs.next()) {
+                System.out.printf("%d | %s | %s | %s | %.2f%n",
+                        rs.getInt("id"),
+                        rs.getString("first_name"),
+                        rs.getString("last_name"),
+                        rs.getString("email"),
+                        rs.getDouble("salary"));
+            }
+        }
+    }
+
+    // Update employee
+    private static void updateEmployee(Scanner scanner) throws SQLException {
+        System.out.print("Enter employee ID to update: ");
+        int id = scanner.nextInt();
+        scanner.nextLine(); // Consume newline
+        
+        System.out.print("Enter new first name: ");
+        String firstName = scanner.nextLine();
+        System.out.print("Enter new last name: ");
